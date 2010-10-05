@@ -714,13 +714,21 @@ MSG
       index_options = klass.sphinx_index_options
 
       ids = matches.collect { |match| match[:attributes]["sphinx_internal_id"] }
+
+      # apply the additional SQL order if the current sphinx sort is only on
+      # string fields
+      sql_order =  options[:order].downcase.gsub(/_sort /, ' ')
+      order_cols = sql_order.split(',').collect{|x| x.strip.split(/\s/)[0]}.flatten.uniq
+      col_class = options[:classes].first
+      sql_sort = order_cols.all?{|x| c = col_class.columns_hash[x]; c && c.type == :string}
+
       instances = ids.length > 0 ? klass.find(
         :all,
         :joins      => options[:joins],
         :conditions => {klass.primary_key_for_sphinx.to_sym => ids},
         :include    => (options[:include] || index_options[:include]),
         :select     => (options[:select]  || index_options[:select]),
-        :order      => (options[:sql_order] || index_options[:sql_order])
+        :order      =>  sql_sort ? sql_order : nil
       ) : []
 
       # Raise an exception if we find records in Sphinx but not in the DB, so
@@ -733,7 +741,7 @@ MSG
 
       # if the user has specified an SQL order, return the collection
       # without rearranging it into the Sphinx order
-      return instances if (options[:sql_order] || index_options[:sql_order])
+      return instances if sql_sort
 
       ids.collect { |obj_id|
         instances.detect do |obj|
