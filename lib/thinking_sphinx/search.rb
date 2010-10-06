@@ -717,10 +717,10 @@ MSG
 
       # apply the additional SQL order if the current sphinx sort is only on
       # string fields
-      sql_order =  options[:order].downcase.gsub(/_sort /, ' ')
+      sql_order =  (options[:order] || '').to_s.downcase.gsub(/_sort /, ' ')
       order_cols = sql_order.split(',').collect{|x| x.strip.split(/\s/)[0]}.flatten.uniq
       col_class = options[:classes].first
-      sql_sort = order_cols.all?{|x| c = col_class.columns_hash[x]; c && c.type == :string}
+      sql_sort = order_cols.all?{|x| c = col_class.columns_hash[x]; c && c.type == :string} && !sql_order.blank?
 
       instances = ids.length > 0 ? klass.find(
         :all,
